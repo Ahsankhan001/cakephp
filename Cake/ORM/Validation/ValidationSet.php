@@ -116,7 +116,6 @@ class ValidationSet implements \ArrayAccess, \IteratorAggregate, \Countable {
  * @return array list of validation errors for this field
  */
 	public function validate($data, $isUpdate = false) {
-		$this->reset();
 		$this->_isUpdate = $isUpdate;
 
 		if ($this->checkValidatePresent($this->field, $data)) {
@@ -202,17 +201,6 @@ class ValidationSet implements \ArrayAccess, \IteratorAggregate, \Countable {
 			return true;
 		}
 		return false;
-	}
-
-/**
- * Resets internal state for all validation rules in this set
- *
- * @return void
- */
-	public function reset() {
-		foreach ($this->getRules() as $rule) {
-			$rule->reset();
-		}
 	}
 
 /**
