@@ -170,7 +170,7 @@ class ValidationSet implements \ArrayAccess, \IteratorAggregate, \Countable {
  * @return void
  */
 	public function offsetSet($index, $rule) {
-		$this->setRule($index, $rule);
+		$this->add($index, $rule);
 	}
 
 /**
