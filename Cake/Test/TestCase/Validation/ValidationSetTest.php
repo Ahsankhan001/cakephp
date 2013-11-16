@@ -8,7 +8,7 @@
  * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
  *
  * Licensed under The MIT License
- * For full copyright and license information, please see the LICENSE.txt
+ * For full copyright and license infValidationation, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice
  *
  * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
@@ -16,10 +16,10 @@
  * @since         CakePHP(tm) v 2.2.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
-namespace Cake\Test\TestCase\Model\Validator;
+namespace Cake\Test\TestCase\Validation;
 
-use Cake\ORM\Validation\ValidationRule;
-use Cake\ORM\Validation\ValidationSet;
+use Cake\Validation\ValidationRule;
+use Cake\Validation\ValidationSet;
 use Cake\TestSuite\TestCase;
 
 /**
@@ -37,7 +37,7 @@ class ValidationSetTest extends TestCase {
 		$field = new ValidationSet;
 		$field->add('notEmpty', ['rule' => 'notEmpty', 'message' => 'Can not be empty']);
 		$result = $field->rule('notEmpty');
-		$this->assertInstanceOf('Cake\ORM\Validation\ValidationRule', $result);
+		$this->assertInstanceOf('Cake\Validation\ValidationRule', $result);
 		$expected = new ValidationRule(['rule' => 'notEmpty', 'message' => 'Can not be empty']);
 		$this->assertEquals($expected, $result);
 	}
@@ -53,7 +53,7 @@ class ValidationSetTest extends TestCase {
 
 		$result = $field->rules();
 		$this->assertEquals(['notEmpty'], array_keys($result));
-		$this->assertInstanceOf('Cake\ORM\Validation\ValidationRule', $result['notEmpty']);
+		$this->assertInstanceOf('Cake\Validation\ValidationRule', $result['notEmpty']);
 	}
 
 /**
@@ -68,15 +68,15 @@ class ValidationSetTest extends TestCase {
 			->add('other', ['rule' => 'email']);
 
 		$rule = $set['notEmpty'];
-		$this->assertInstanceOf('Cake\ORM\Validation\ValidationRule', $rule);
+		$this->assertInstanceOf('Cake\Validation\ValidationRule', $rule);
 		$this->assertEquals(new ValidationRule(['rule' => 'notEmpty']), $rule);
 
 		$rule = $set['numeric'];
-		$this->assertInstanceOf('Cake\ORM\Validation\ValidationRule', $rule);
+		$this->assertInstanceOf('Cake\Validation\ValidationRule', $rule);
 		$this->assertEquals(new ValidationRule(['rule' => 'numeric']), $rule);
 
 		$rule = $set['other'];
-		$this->assertInstanceOf('Cake\ORM\Validation\ValidationRule', $rule);
+		$this->assertInstanceOf('Cake\Validation\ValidationRule', $rule);
 		$this->assertEquals(new ValidationRule(['rule' => 'email']), $rule);
 	}
 
@@ -109,7 +109,7 @@ class ValidationSetTest extends TestCase {
 		$this->assertFalse(isset($set['other']));
 		$set['other'] = ['rule' => 'email'];
 		$rule = $set['other'];
-		$this->assertInstanceOf('Cake\ORM\Validation\ValidationRule', $rule);
+		$this->assertInstanceOf('Cake\Validation\ValidationRule', $rule);
 		$this->assertEquals(new ValidationRule(['rule' => 'email']), $rule);
 	}
 
@@ -156,7 +156,7 @@ class ValidationSetTest extends TestCase {
 			if ($i === 2) {
 				$this->assertEquals('other', $name);
 			}
-			$this->assertInstanceOf('Cake\ORM\Validation\ValidationRule', $rule);
+			$this->assertInstanceOf('Cake\Validation\ValidationRule', $rule);
 			$i++;
 		}
 		$this->assertEquals(3, $i);
