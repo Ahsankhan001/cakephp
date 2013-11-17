@@ -157,7 +157,6 @@ class ValidationRule {
 		return false;
 	}
 
-
 /**
  * Sets the rule properties from the rule entry in validate
  *
