@@ -91,40 +91,6 @@ class Time {
 	protected static $_time = null;
 
 /**
- * Magic set method for backward compatibility.
- *
- * Used by TimeHelper to modify static variables in this class
- *
- * @param string $name Variable name
- * @param mixes $value Variable value
- * @return void
- */
-	public function __set($name, $value) {
-		switch ($name) {
-			case 'niceFormat':
-				static::${$name} = $value;
-				break;
-		}
-	}
-
-/**
- * Magic set method for backward compatibility.
- *
- * Used by TimeHelper to get static variables in this class.
- *
- * @param string $name Variable name
- * @return mixed
- */
-	public function __get($name) {
-		switch ($name) {
-			case 'niceFormat':
-				return static::${$name};
-			default:
-				return null;
-		}
-	}
-
-/**
  * Converts a string representing the format for the function strftime and returns a
  * windows safe and i18n aware format.
  *
@@ -136,7 +102,8 @@ class Time {
  */
 	public static function convertSpecifiers($format, $time = null) {
 		if (!$time) {
-			$time = time();
+			$dateTime = new \DateTime;
+			$time = $dateTime->getTimestamp();
 		}
 		static::$_time = $time;
 		return preg_replace_callback('/\%(\w+)/', array(__CLASS__, '_translateSpecifier'), $format);
@@ -356,7 +323,8 @@ class Time {
  */
 	public static function nice($dateString = null, $timezone = null, $format = null) {
 		if (!$dateString) {
-			$dateString = time();
+			$dateTime = new \DateTime;
+			$dateString = $dateTime->getTimestamp();
 		}
 		$date = static::fromString($dateString, $timezone);
 
@@ -383,7 +351,8 @@ class Time {
  */
 	public static function niceShort($dateString = null, $timezone = null) {
 		if (!$dateString) {
-			$dateString = time();
+			$dateTime = new \DateTime;
+			$dateString = $dateTime->getTimestamp();
 		}
 		$date = static::fromString($dateString, $timezone);
 
@@ -432,10 +401,11 @@ class Time {
  * @link http://book.cakephp.org/2.0/en/core-libraries/helpers/time.html#TimeHelper::daysAsSql
  */
 	public static function daysAsSql($begin, $end, $fieldName, $timezone = null) {
-		$begin = static::fromString($begin, $timezone);
-		$end = static::fromString($end, $timezone);
-		$begin = date('Y-m-d', $begin) . ' 00:00:00';
-		$end = date('Y-m-d', $end) . ' 23:59:59';
+		$dateTime = new \DateTime;
+		$begin = $dateTime->setTimestamp(static::fromString($begin, $timezone))
+			->format('Y-m-d') . ' 00:00:00';
+		$end = $dateTime->setTimestamp(static::fromString($end, $timezone))
+			->format('Y-m-d') . ' 23:59:59';
 
 		return "($fieldName >= '$begin') AND ($fieldName <= '$end')";
 	}
@@ -451,7 +421,7 @@ class Time {
  * @link http://book.cakephp.org/2.0/en/core-libraries/helpers/time.html#TimeHelper::dayAsSql
  */
 	public static function dayAsSql($dateString, $fieldName, $timezone = null) {
-		return static::daysAsSql($dateString, $dateString, $fieldName);
+		return static::daysAsSql($dateString, $dateString, $fieldName, $timezone);
 	}
 
 /**
@@ -476,7 +446,8 @@ class Time {
  */
 	public static function isFuture($dateString, $timezone = null) {
 		$timestamp = static::fromString($dateString, $timezone);
-		return $timestamp > time();
+		$dateTime = new \DateTime;
+		return $timestamp > $dateTime->getTimestamp();
 	}
 
 /**
@@ -489,7 +460,8 @@ class Time {
  */
 	public static function isPast($dateString, $timezone = null) {
 		$timestamp = static::fromString($dateString, $timezone);
-		return $timestamp < time();
+		$dateTime = new \DateTime;
+		return $timestamp < $dateTime->getTimestamp();
 	}
 
 /**
@@ -561,14 +533,16 @@ class Time {
  * @link http://book.cakephp.org/2.0/en/core-libraries/helpers/time.html#TimeHelper::toQuarter
  */
 	public static function toQuarter($dateString, $range = false) {
-		$time = static::fromString($dateString);
-		$date = ceil(date('m', $time) / 3);
+		$dateTime = new \DateTime;
+		$dateTime->setTimestamp(static::fromString($dateString));
+
+		$quarter = ceil($dateTime->format('m') / 3);
 		if ($range === false) {
-			return $date;
+			return $quarter;
 		}
 
-		$year = date('Y', $time);
-		switch ($date) {
+		$year = $dateTime->format('Y');
+		switch ($quarter) {
 			case 1:
 				return array($year . '-01-01', $year . '-03-31');
 			case 2:
@@ -640,7 +614,9 @@ class Time {
  * @link http://book.cakephp.org/2.0/en/core-libraries/helpers/time.html#TimeHelper::toAtom
  */
 	public static function toAtom($dateString, $timezone = null) {
-		return date('Y-m-d\TH:i:s\Z', static::fromString($dateString, $timezone));
+		$dateTime = new \DateTime;
+		return $dateTime->setTimestamp(static::fromString($dateString, $timezone))
+			->format($dateTime::ATOM);
 	}
 
 /**
@@ -652,10 +628,12 @@ class Time {
  * @link http://book.cakephp.org/2.0/en/core-libraries/helpers/time.html#TimeHelper::toRSS
  */
 	public static function toRSS($dateString, $timezone = null) {
+		$dateTime = new \DateTime;
 		$date = static::fromString($dateString, $timezone);
 
 		if ($timezone === null) {
-			return date("r", $date);
+			return $dateTime->setTimestamp($date)
+				->format('r');
 		}
 
 		$userOffset = $timezone;
@@ -674,7 +652,8 @@ class Time {
 			$minutes = (int)(fmod(abs($userOffset), $hours) * 60);
 			$timezone = ($userOffset < 0 ? '-' : '+') . str_pad($hours, 2, '0', STR_PAD_LEFT) . str_pad($minutes, 2, '0', STR_PAD_LEFT);
 		}
-		return date('D, d M Y H:i:s', $date) . ' ' . $timezone;
+		return $dateTime->setTimestamp($date)
+			->format('D, d M Y H:i:s') . ' ' . $timezone;
 	}
 
 /**
@@ -970,7 +949,8 @@ class Time {
  * @link http://book.cakephp.org/2.0/en/core-libraries/helpers/time.html#TimeHelper::gmt
  */
 	public static function gmt($dateString = null) {
-		$time = time();
+		$dateTime = new \DateTime;
+		$time = $dateTime->getTimestamp();
 		if ($dateString) {
 			$time = static::fromString($dateString);
 		}

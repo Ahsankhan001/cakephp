@@ -25,6 +25,13 @@ use Cake\Database\Schema\Table;
 class SqliteSchema extends BaseSchema {
 
 /**
+ * Whether or not this connection contains sequences
+ *
+ * @return boolean
+ */
+	protected $_hasSequences;
+
+/**
  * Convert a column definition to the abstract types.
  *
  * The returned type will be a type that
@@ -63,6 +70,9 @@ class SqliteSchema extends BaseSchema {
 		}
 		if (strpos($col, 'int') !== false) {
 			return ['type' => 'integer', 'length' => $length];
+		}
+		if ($col === 'char' && $length === 36) {
+			return ['type' => 'uuid', 'length' => null];
 		}
 		if ($col === 'char') {
 			return ['type' => 'string', 'fixed' => true, 'length' => $length];
@@ -197,6 +207,7 @@ class SqliteSchema extends BaseSchema {
 	public function columnSql(Table $table, $name) {
 		$data = $table->column($name);
 		$typeMap = [
+			'uuid' => ' CHAR(36)',
 			'string' => ' VARCHAR',
 			'integer' => ' INTEGER',
 			'biginteger' => ' BIGINT',
@@ -327,10 +338,31 @@ class SqliteSchema extends BaseSchema {
  */
 	public function truncateTableSql(Table $table) {
 		$name = $table->name();
-		return [
-			sprintf('DELETE FROM sqlite_sequence WHERE name="%s"', $name),
-			sprintf('DELETE FROM "%s"', $name)
-		];
+		$sql = [];
+		if ($this->hasSequences()) {
+			$sql[] = sprintf('DELETE FROM sqlite_sequence WHERE name="%s"', $name);
+		}
+
+		$sql[] = sprintf('DELETE FROM "%s"', $name);
+		return $sql;
+	}
+
+/**
+ * Returns whether there is any table in this connection to SQLite contianing
+ * sequences
+ *
+ * @return void
+ */
+	public function hasSequences() {
+		if ($this->_hasSequences !== null) {
+			return $this->_hasSequences;
+		}
+		$result = $this->_driver
+			->prepare('SELECT 1 FROM sqlite_master WHERE name = "sqlite_sequence"');
+		$result->execute();
+		$this->_hasSequences = (bool)$result->rowCount();
+		$result->closeCursor();
+		return $this->_hasSequences;
 	}
 
 }

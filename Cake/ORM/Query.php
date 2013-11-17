@@ -539,7 +539,7 @@ class Query extends DatabaseQuery {
 		];
 
 		foreach ($options as $option => $values) {
-			if (isset($valid[$option])) {
+			if (isset($valid[$option]) && isset($values)) {
 				$this->{$valid[$option]}($values);
 			} else {
 				$this->_options[$option] = $values;
@@ -585,6 +585,7 @@ class Query extends DatabaseQuery {
  * @param callable $reducer
  * @param boolean $overwrite
  * @return Cake\ORM\Query|array
+ * @see Cake\ORM\MapReduce for details on how to use emit data to the map reducer.
  */
 	public function mapReduce(callable $mapper = null, callable $reducer = null, $overwrite = false) {
 		if ($overwrite) {
@@ -601,9 +602,9 @@ class Query extends DatabaseQuery {
  * Returns the first result out of executing this query, if the query has not been
  * executed before, it will set the limit clause to 1 for performance reasons.
  *
- * ###Example:
+ * ### Example:
  *
- * ``$singleUser = $query->select(['id', 'username'])->first()``
+ * `$singleUser = $query->select(['id', 'username'])->first();`
  *
  * @return mixed the first result from the ResultSet
  */
@@ -614,6 +615,22 @@ class Query extends DatabaseQuery {
 		$this->bufferResults();
 		$this->_results = $this->execute();
 		return $this->_results->one();
+	}
+
+/**
+ * Return the COUNT(*) for for the query.
+ *
+ * This method will replace the selected fields with a COUNT(*)
+ * erase any configured mapReduce functions and execute the query
+ * returning the number of rows.
+ *
+ * @return integer
+ */
+	public function total() {
+		$query = $this->select(['count' => $this->count('*')], true)
+			->hydrate(false);
+		$query->mapReduce(null, null, true);
+		return $query->first()['count'];
 	}
 
 /**
@@ -867,16 +884,24 @@ class Query extends DatabaseQuery {
 	}
 
 /**
- * Magic method to be able to call scoped finders in the default table
+ * Apply custom finds to against an existing query object.
  *
- * @param string $method name of the method to be invoked
- * @param array $args List of arguments passed to the function
- * @return mixed
- * @throws \BadMethodCallException
+ * Allows custom find methods to be combined and applied to each other.
+ *
+ * {{{
+ * $table->find('all')->find('recent');
+ * }}}
+ *
+ * The above is an example of stacking multiple finder methods onto
+ * a single query.
+ *
+ * @param string $finder The finder method to use.
+ * @param array $options The options for the finder.
+ * @return Cake\ORM\Query Returns a modified query.
+ * @see Cake\ORM\Table::find()
  */
-	public function __call($method, $args) {
-		$options = array_shift($args) ?: [];
-		return $this->repository()->callFinder($method, $this, $options);
+	public function find($finder, $options = []) {
+		return $this->repository()->callFinder($finder, $this, $options);
 	}
 
 }

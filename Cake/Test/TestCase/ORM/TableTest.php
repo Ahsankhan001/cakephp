@@ -570,6 +570,17 @@ class TableTest extends \Cake\TestSuite\TestCase {
 			'connection' => $this->connection,
 		]);
 		$table->displayField('username');
+		$query = $table->find('list')
+			->hydrate(false)
+			->order('id');
+		$expected = [
+			1 => 'mariano',
+			2 => 'nate',
+			3 => 'larry',
+			4 => 'garrett'
+		];
+		$this->assertSame($expected, $query->toArray());
+
 		$query = $table->find('list', ['fields' => ['id', 'username']])
 			->hydrate(false)
 			->order('id');
@@ -664,31 +675,10 @@ class TableTest extends \Cake\TestSuite\TestCase {
 		$results = $table->find('all')
 			->select(['id', 'parent_id', 'name'])
 			->hydrate(false)
-			->threaded()
+			->find('threaded')
 			->toArray();
+
 		$this->assertEquals($expected, $results);
-	}
-
-/**
- * Tests that finders can be called directly
- *
- * @return void
- */
-	public function testCallingFindersDirectly() {
-		$table = $this->getMock('\Cake\ORM\Table', ['find'], [], '', false);
-		$query = $this->getMock('\Cake\ORM\Query', [], [$this->connection, $table]);
-		$table->expects($this->once())
-			->method('find')
-			->with('list', [])
-			->will($this->returnValue($query));
-		$this->assertSame($query, $table->list());
-
-		$table = $this->getMock('\Cake\ORM\Table', ['find'], [], '', false);
-		$table->expects($this->once())
-			->method('find')
-			->with('threaded', ['order' => ['name' => 'ASC']])
-			->will($this->returnValue($query));
-		$this->assertSame($query, $table->threaded(['order' => ['name' => 'ASC']]));
 	}
 
 /**
@@ -712,8 +702,8 @@ class TableTest extends \Cake\TestSuite\TestCase {
 			->will($this->returnValue($query));
 
 		$result = $table
-			->threaded(['order' => ['name' => 'ASC']])
-			->list(['keyPath' => 'id']);
+			->find('threaded', ['order' => ['name' => 'ASC']])
+			->find('list', ['keyPath' => 'id']);
 		$this->assertSame($query, $result);
 	}
 
@@ -728,7 +718,7 @@ class TableTest extends \Cake\TestSuite\TestCase {
 			'connection' => $this->connection,
 		]);
 		$results = $table->find('all')
-			->threaded()
+			->find('threaded')
 			->select(['id', 'parent_id', 'name'])
 			->toArray();
 
@@ -1007,6 +997,17 @@ class TableTest extends \Cake\TestSuite\TestCase {
 	}
 
 /**
+ * Test you can alias a behavior method
+ *
+ * @return void
+ */
+	public function testCallBehaviorAliasedMethod() {
+		$table = TableRegistry::get('article');
+		$table->addBehavior('Sluggable', ['implementedMethods' => ['wednesday' => 'slugify']]);
+		$this->assertEquals('some_value', $table->wednesday('some value'));
+	}
+
+/**
  * Test finder methods from behaviors.
  *
  * @return void
@@ -1015,11 +1016,21 @@ class TableTest extends \Cake\TestSuite\TestCase {
 		$table = TableRegistry::get('articles');
 		$table->addBehavior('Sluggable');
 
-		$query = $table->noSlug();
+		$query = $table->find('noSlug');
 		$this->assertInstanceOf('Cake\ORM\Query', $query);
 		$this->assertNotEmpty($query->clause('where'));
+	}
 
-		$query = $table->find('noSlug');
+/**
+ * testCallBehaviorAliasedFinder
+ *
+ * @return void
+ */
+	public function testCallBehaviorAliasedFinder() {
+		$table = TableRegistry::get('articles');
+		$table->addBehavior('Sluggable', ['implementedFinders' => ['special' => 'findNoSlug']]);
+
+		$query = $table->find('special');
 		$this->assertInstanceOf('Cake\ORM\Query', $query);
 		$this->assertNotEmpty($query->clause('where'));
 	}
@@ -1773,6 +1784,18 @@ class TableTest extends \Cake\TestSuite\TestCase {
 		$entity->isNew(true);
 		$result = $table->delete($entity);
 		$this->assertFalse($result);
+	}
+
+/**
+ * test hasField()
+ *
+ * @return void
+ */
+	public function testHasField() {
+		$table = TableRegistry::get('articles');
+		$this->assertFalse($table->hasField('nope'), 'Should not be there.');
+		$this->assertTrue($table->hasField('title'), 'Should be there.');
+		$this->assertTrue($table->hasField('body'), 'Should be there.');
 	}
 
 /**

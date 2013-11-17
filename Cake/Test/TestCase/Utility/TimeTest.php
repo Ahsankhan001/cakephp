@@ -391,13 +391,13 @@ class TimeTest extends TestCase {
 		$this->assertEquals(date('D', $time), $this->Time->nice($time, null, '%a'));
 		$this->assertEquals(date('M d, Y', $time), $this->Time->nice($time, null, '%b %d, %Y'));
 
-		$this->Time->niceFormat = '%Y-%d-%m';
+		Time::$niceFormat = '%Y-%d-%m';
 		$this->assertEquals(date('Y-d-m', $time), $this->Time->nice($time));
-		$this->assertEquals('%Y-%d-%m', $this->Time->niceFormat);
+		$this->assertEquals('%Y-%d-%m', Time::$niceFormat);
 
 		Time::$niceFormat = '%Y-%d-%m %H:%M';
 		$this->assertEquals(date('Y-d-m H:i', $time), $this->Time->nice($time));
-		$this->assertEquals('%Y-%d-%m %H:%M', $this->Time->niceFormat);
+		$this->assertEquals('%Y-%d-%m %H:%M', Time::$niceFormat);
 
 		date_default_timezone_set('UTC');
 		$result = $this->Time->nice(null, 'America/New_York');
@@ -561,7 +561,8 @@ class TimeTest extends TestCase {
  * @return void
  */
 	public function testToAtom() {
-		$this->assertEquals(date('Y-m-d\TH:i:s\Z'), $this->Time->toAtom(time()));
+		$dateTime = new \DateTime;
+		$this->assertEquals($dateTime->format($dateTime::ATOM), $this->Time->toAtom($dateTime->getTimestamp()));
 	}
 
 /**

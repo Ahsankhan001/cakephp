@@ -18,6 +18,7 @@ namespace Cake\ORM;
 
 use Cake\Core\App;
 use Cake\Database\Schema\Table as Schema;
+use Cake\Database\Type;
 use Cake\Event\Event;
 use Cake\Event\EventManager;
 use Cake\ORM\Association\BelongsTo;
@@ -306,6 +307,20 @@ class Table {
 			$schema = new Schema($this->table(), $schema);
 		}
 		return $this->_schema = $schema;
+	}
+
+/**
+ * Test to see if a Table has a specific field/column.
+ *
+ * Delegates to the schema object and checks for column presence
+ * using the Schema\Table instance.
+ *
+ * @param string $field The field to check for.
+ * @return boolean True if the field exists, false if it does not.
+ */
+	public function hasField($field) {
+		$schema = $this->schema();
+		return $schema->column($field) !== null;
 	}
 
 /**
@@ -962,20 +977,49 @@ class Table {
  */
 	protected function _insert($entity, $data) {
 		$query = $this->_buildQuery();
+
+		$primary = $this->primaryKey();
+		$id = $this->_newId($primary);
+		if ($id !== null) {
+			$data[$primary] = $id;
+		}
+
 		$statement = $query->insert($this->table(), array_keys($data))
 			->values($data)
 			->executeStatement();
 
 		$success = false;
 		if ($statement->rowCount() > 0) {
-			$primary = $this->primaryKey();
-			$id = $statement->lastInsertId($this->table(), $primary);
-			$entity->set($primary, $id);
+			if (!isset($data[$primary])) {
+				$id = $statement->lastInsertId($this->table(), $primary);
+			}
+			if ($id !== null) {
+				$entity->set($primary, $id);
+			}
 			$entity->clean();
 			$success = $entity;
 		}
 		$statement->closeCursor();
 		return $success;
+	}
+
+/**
+ * Generate a primary key value for a new record.
+ *
+ * By default, this uses the type system to generate a new primary key
+ * value if possible. You can override this method if you have specific requirements
+ * for id generation.
+ *
+ * @param string $primary The primary key column to get a new ID for.
+ * @return null|mixed Either null or the new primary key value.
+ */
+	protected function _newId($primary) {
+		if (!$primary) {
+			return null;
+		}
+		$typeName = $this->schema()->columnType($primary);
+		$type = Type::build($typeName);
+		return $type->newId();
 	}
 
 /**
@@ -1162,29 +1206,22 @@ class Table {
  */
 	public function callFinder($type, Query $query, $options = []) {
 		$finder = 'find' . ucfirst($type);
-		$behaviorFinder = ($this->_behaviors && $this->_behaviors->hasFinder($finder));
-		$missingMethod = (!method_exists($this, $finder) && !$behaviorFinder);
-		if ($missingMethod) {
-			throw new \BadMethodCallException(
-				__d('cake_dev', 'Unknown finder method "%s"', $finder)
-			);
+		if (method_exists($this, $finder)) {
+			return $this->{$finder}($query, $options);
 		}
-		if ($behaviorFinder) {
-			return $this->_behaviors->call($finder, [$query, $options]);
+
+		if ($this->_behaviors && $this->_behaviors->hasFinder($type)) {
+			return $this->_behaviors->callFinder($type, [$query, $options]);
 		}
-		return $this->{$finder}($query, $options);
+
+		throw new \BadMethodCallException(
+			__d('cake_dev', 'Unknown finder method "%s"', $type)
+		);
 	}
 
 /**
  * Magic method to be able to call scoped finders & behaviors
  * without the find prefix.
- *
- * ## Finder delegation
- *
- * You can use this feature to invoke finder methods, without
- * adding the 'find' prefix or preparing a query ahead of time.
- * For example, if your Table provided a `findRecent` finder, you
- * could call `$table->recent()` instead.
  *
  * ## Behavior delegation
  *
@@ -1201,15 +1238,9 @@ class Table {
 			return $this->_behaviors->call($method, $args);
 		}
 
-		$query = null;
-		if (isset($args[0]) && $args[0] instanceof Query) {
-			$query = array_shift($args);
-		}
-		$options = array_shift($args) ?: [];
-		if ($query === null) {
-			return $this->find($method, $options);
-		}
-		return $this->callFinder($method, $query, $options);
+		throw new \BadMethodCallException(
+			__d('cake_dev', 'Unknown method "%s"', $method)
+		);
 	}
 
 }
