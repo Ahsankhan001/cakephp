@@ -1046,7 +1046,7 @@ class Table {
 			return true;
 		}
 
-		$success = $entity->validate($validator, $options['fieldList']);
+		$success = $entity->validate($validator);
 
 		$event = new Event('Model.afterValidate', $this, $pass);
 		$this->getEventManager()->dispatch($event);
