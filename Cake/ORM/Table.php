@@ -872,7 +872,11 @@ class Table {
  * @return \Cake\ORM\Entity|boolean
  */
 	public function save(Entity $entity, array $options = []) {
-		$options = new \ArrayObject($options + ['atomic' => true, 'fieldList' => []]);
+		$options = new \ArrayObject($options + [
+			'atomic' => true,
+			'fieldList' => [],
+			'validate' => true
+		]);
 		if ($options['atomic']) {
 			$connection = $this->connection();
 			$success = $connection->transactional(function() use ($entity, $options) {
@@ -900,6 +904,10 @@ class Table {
 
 		if ($entity->isNew() === null) {
 			$entity->isNew(true);
+		}
+
+		if (!$this->_processValidation($entity, $options)) {
+			return false;
 		}
 
 		$event = new Event('Model.beforeSave', $this, compact('entity', 'options'));
@@ -988,6 +996,28 @@ class Table {
 		}
 		$statement->closeCursor();
 		return $success;
+	}
+
+/**
+ * Validates the $entity if the 'validate' key is not set to false in $options
+ *
+ * @param \Cake\ORM\Entity The entity to validate
+ * @param \ArrayObject $options
+ * @return boolean true if the entity is valid, false otherwise
+ */
+	protected function _processValidation($entity, $options) {
+		if (empty($options['validate'])) {
+			return true;
+		}
+
+		$type = is_string($options['validate']) ? $options['validate'] : 'default';
+		$validator = $this->validator($type);
+
+		if (!count($validator)) {
+			return true;
+		}
+
+		return $entity->validate($validator, $options['fieldList']);
 	}
 
 /**
